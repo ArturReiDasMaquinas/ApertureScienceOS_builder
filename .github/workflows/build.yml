@@ -42,11 +42,9 @@ jobs:
           pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' || true
 
           if ! grep -q "chaotic-aur" /etc/pacman.conf; then
-            cat << 'CHAOTIC' >> /etc/pacman.conf
-
-[chaotic-aur]
-Include = /etc/pacman.d/chaotic-mirrorlist
-CHAOTIC
+            echo "" >> /etc/pacman.conf
+            echo "[chaotic-aur]" >> /etc/pacman.conf
+            echo "Include = /etc/pacman.d/chaotic-mirrorlist" >> /etc/pacman.conf
           fi
           pacman -Sy --noconfirm
 
@@ -64,11 +62,9 @@ CHAOTIC
           find . -type f \( -name "*.sh" -o -name "packages.x86_64" -o -name "profiledef.sh" -o -name "pacman.conf" \) -exec dos2unix {} + 2>/dev/null || true
 
           if [ -f "pacman.conf" ] && ! grep -q "chaotic-aur" pacman.conf; then
-            cat << 'CHAOTIC' >> pacman.conf
-
-[chaotic-aur]
-Include = /etc/pacman.d/chaotic-mirrorlist
-CHAOTIC
+            echo "" >> pacman.conf
+            echo "[chaotic-aur]" >> pacman.conf
+            echo "Include = /etc/pacman.d/chaotic-mirrorlist" >> pacman.conf
           fi
 
           echo "=== 5. Injetando Pacotes da Interface XFCE + Calamares ==="
@@ -79,16 +75,14 @@ CHAOTIC
 
           echo "=== 6. Criando Atalho do Calamares no Live Desktop ==="
           mkdir -p airootfs/etc/skel/Desktop
-          cat << 'DESK' > airootfs/etc/skel/Desktop/install-system.desktop
-[Desktop Entry]
-Type=Application
-Name=Instalar Aperture Science OS
-Comment=Iniciar o instalador grafico Calamares
-Exec=sudo -E calamares
-Icon=system-software-install
-Terminal=false
-Categories=System;
-DESK
+          echo "[Desktop Entry]" > airootfs/etc/skel/Desktop/install-system.desktop
+          echo "Type=Application" >> airootfs/etc/skel/Desktop/install-system.desktop
+          echo "Name=Instalar Aperture Science OS" >> airootfs/etc/skel/Desktop/install-system.desktop
+          echo "Comment=Iniciar o instalador grafico Calamares" >> airootfs/etc/skel/Desktop/install-system.desktop
+          echo "Exec=sudo -E calamares" >> airootfs/etc/skel/Desktop/install-system.desktop
+          echo "Icon=system-software-install" >> airootfs/etc/skel/Desktop/install-system.desktop
+          echo "Terminal=false" >> airootfs/etc/skel/Desktop/install-system.desktop
+          echo "Categories=System;" >> airootfs/etc/skel/Desktop/install-system.desktop
           chmod +x airootfs/etc/skel/Desktop/install-system.desktop
 
           for dir in syslinux efiboot grub systemd-boot; do
@@ -98,22 +92,19 @@ DESK
           done
 
           echo "=== 7. Sincronizando Bootmodes ==="
-          cat << 'PYEOF' > patch_profile.py
-import re
-releng_path = "/usr/share/archiso/configs/releng/profiledef.sh"
-with open(releng_path, "r") as f:
-    releng = f.read()
-
-bm_match = re.search(r"bootmodes=\([\s\S]*?\)", releng)
-if bm_match:
-    bm = bm_match.group(0)
-    with open("profiledef.sh", "r") as f:
-        target = f.read()
-    new_target = re.sub(r"bootmodes=\([\s\S]*?\)", bm, target)
-    with open("profiledef.sh", "w") as f:
-        f.write(new_target)
-PYEOF
-
+          echo "import re" > patch_profile.py
+          echo "releng_path = '/usr/share/archiso/configs/releng/profiledef.sh'" >> patch_profile.py
+          echo "with open(releng_path, 'r') as f:" >> patch_profile.py
+          echo "    releng = f.read()" >> patch_profile.py
+          echo "bm_match = re.search(r'bootmodes=\([\s\S]*?\)', releng)" >> patch_profile.py
+          echo "if bm_match:" >> patch_profile.py
+          echo "    bm = bm_match.group(0)" >> patch_profile.py
+          echo "    with open('profiledef.sh', 'r') as f:" >> patch_profile.py
+          echo "        target = f.read()" >> patch_profile.py
+          echo "    new_target = re.sub(r'bootmodes=\([\s\S]*?\)', bm, target)" >> patch_profile.py
+          echo "    with open('profiledef.sh', 'w') as f:" >> patch_profile.py
+          echo "        f.write(new_target)" >> patch_profile.py
+          
           python3 patch_profile.py
 
           echo "=== 8. Gerando a ISO Final ==="

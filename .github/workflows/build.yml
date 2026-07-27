@@ -1,0 +1,32 @@
+name: Build ApertureScienceOS
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build-iso:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+      options: --privileged
+    steps:
+      - name: Baixar código do repositório
+        uses: actions/checkout@v4
+
+      - name: Atualizar sistema e instalar archiso
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm archiso git rsync
+
+      - name: Compilar a ISO
+        run: |
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Disponibilizar a ISO para Download
+        uses: actions/upload-artifact@v4
+        with:
+          name: ApertureScienceOS-ISO
+          path: out/*.iso

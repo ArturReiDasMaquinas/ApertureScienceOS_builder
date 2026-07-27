@@ -27,7 +27,7 @@ jobs:
           #!/bin/bash
           set -e
 
-          echo "=== 1. Atualizando Chaves e Pacotes ==="
+          echo "=== 1. Atualizando Chaves e Pacotes Base ==="
           pacman-key --init
           pacman-key --populate archlinux
           pacman -Sy --noconfirm archlinux-keyring
@@ -41,19 +41,18 @@ jobs:
 
           mkdir -p out
 
-          if [ ! -f "packages.x86_64" ]; then
-            cp -r /usr/share/archiso/configs/releng/* .
-          fi
+          echo "=== 3. Copiando arquivos base do releng com seguranca ==="
+          rsync -avI /usr/share/archiso/configs/releng/ .
 
-          find . -type f \( -name "*.sh" -o -name "packages.x86_64" -o -name "profiledef.sh" -o -name "pacman.conf" \) -exec dos2unix {} + 2>/dev/null || true
+          find . -type f \( -name "*.sh" -o -name "packages.x86_64" -o -name "profiledef.sh" -o -name "pacman.conf" -o -name "mkinitcpio.conf" \) -exec dos2unix {} + 2>/dev/null || true
 
-          echo "=== 3. Injetando Pacotes e archinstall ==="
+          echo "=== 4. Injetando Pacotes e archinstall ==="
           PKGS="base linux linux-firmware base-devel sudo git curl wget nano micro bash-completion networkmanager syslinux archinstall fastfetch"
           for pkg in $PKGS; do
             grep -q "^${pkg}$" packages.x86_64 || echo "$pkg" >> packages.x86_64
           done
 
-          echo "=== 4. Criando Instalador Temático Aperture ==="
+          echo "=== 5. Criando Instalador Tematico ApertureScienceOS ==="
           mkdir -p airootfs/usr/local/bin/
           cat << 'INSTALLER' > airootfs/usr/local/bin/aperture-install
           #!/bin/bash
@@ -65,21 +64,19 @@ jobs:
           echo " |           Automated Installation Utility           |"
           echo " \\____________________________________________________/"
           echo -e "\033[0m"
-          echo -e "\033[1;36m[GLaDOS]: Welcome to the Aperture Science Computer OS installation.\033[0m"
+          echo -e "\033[1;36m[GLaDOS]: Welcome to the ApertureScienceOS installation utility.\033[0m"
           echo -e "\033[1;30m[GLaDOS]: Testing subject detected. Initializing archinstall...\033[0m\n"
 
           archinstall
           INSTALLER
           chmod +x airootfs/usr/local/bin/aperture-install
 
-          # Copiar pastas de boot do releng caso faltem
-          for dir in syslinux efiboot grub systemd-boot; do
-            if [ -d "/usr/share/archiso/configs/releng/$dir" ] && [ ! -d "$dir" ]; then
-              cp -r "/usr/share/archiso/configs/releng/$dir" .
-            fi
-          done
+          mkdir -p airootfs/etc/profile.d/
+          echo "alias instalar='/usr/local/bin/aperture-install'" >> airootfs/etc/profile.d/aperture_aliases.sh
+          echo "alias install='/usr/local/bin/aperture-install'" >> airootfs/etc/profile.d/aperture_aliases.sh
+          chmod +x airootfs/etc/profile.d/aperture_aliases.sh
 
-          echo "=== 5. Sincronizando Bootmodes ==="
+          echo "=== 6. Sincronizando Bootmodes ==="
           echo "import re" > patch_profile.py
           echo "releng_path = '/usr/share/archiso/configs/releng/profiledef.sh'" >> patch_profile.py
           echo "with open(releng_path, 'r') as f:" >> patch_profile.py
@@ -95,7 +92,7 @@ jobs:
           
           python3 patch_profile.py
 
-          echo "=== 6. Gerando a ISO Final ==="
+          echo "=== 7. Gerando a ISO Final ==="
           if [ -f "build.sh" ]; then
             chmod +x build.sh
             ./build.sh

@@ -21,6 +21,53 @@ jobs:
             sudo mknod -m 0660 /dev/loop$i b 7 $i || true
           done
 
+      - name: Criar script de compilação
+        run: |
+          cat << 'EOF' > run_build.sh
+          #!/bin/bash
+          set -e
+
+          pacman -Sy --noconfirm archlinux-keyring
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm archiso git rsync dos2unix syslinux mtools dosfstools squashfs-tools libisoburn edk2-ovmf erofs-utils grub python
+
+          find . -type f \( -name "*.sh" -o -name "packages.x86_64" -o -name "profiledef.sh" -o -name "pacman.conf" \) -exec dos2unix {} +
+
+          if [ -d "ApertureScienceOS_builder" ]; then
+            cd ApertureScienceOS_builder
+          fi
+
+          mkdir -p out
+          grep -q "^syslinux$" packages.x86_64 || echo "syslinux" >> packages.x86_64
+
+          for dir in syslinux efiboot grub systemd-boot; do
+            if [ -d "/usr/share/archiso/configs/releng/$dir" ] && [ ! -d "$dir" ]; then
+              cp -r "/usr/share/archiso/configs/releng/$dir" .
+            fi
+          done
+
+          cat << 'PYEOF' > patch_profile.py
+          import re
+          releng_path = "/usr/share/archiso/configs/releng/profiledef.sh"
+          with open(releng_path, "r") as f:
+              releng = f.read()
+
+          bm_match = re.search(r"bootmodes=\([\s\S]*?\)", releng)
+          if bm_match:
+              bm = bm_match.group(0)
+              with open("profiledef.sh", "r") as f:
+                  target = f.read()
+              new_target = re.sub(r"bootmodes=\([\s\S]*?\)", bm, target)
+              with open("profiledef.sh", "w") as f:
+                  f.write(new_target)
+          PYEOF
+
+          python3 patch_profile.py
+          chmod +x build.sh
+          ./build.sh
+          EOF
+          chmod +x run_build.sh
+
       - name: Executar Build dentro do Container Arch Linux
         run: |
           docker run --privileged \
@@ -28,43 +75,10 @@ jobs:
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
             archlinux:latest \
-            bash -c '
-              pacman -Sy --noconfirm archlinux-keyring && \
-              pacman -Syu --noconfirm && \
-              pacman -S --noconfirm archiso git rsync dos2unix syslinux mtools dosfstools squashfs-tools libisoburn edk2-ovmf erofs-utils grub python && \
-              find . -type f \( -name "*.sh" -o -name "packages.x86_64" -o -name "profiledef.sh" -o -name "pacman.conf" \) -exec dos2unix {} + && \
-              if [ -d "ApertureScienceOS_builder" ]; then cd ApertureScienceOS_builder; fi && \
-              mkdir -p out && \
-              grep -q "^syslinux$" packages.x86_64 || echo "syslinux" >> packages.x86_64 && \
-              for dir in syslinux efiboot grub systemd-boot; do
-                if [ -d "/usr/share/archiso/configs/releng/$dir" ] && [ ! -d "$dir" ]; then
-                  cp -r "/usr/share/archiso/configs/releng/$dir" . ;
-                fi ;
-              done && \
-              cat << "EOF" > patch_profile.py
-import re
-
-releng_path = "/usr/share/archiso/configs/releng/profiledef.sh"
-with open(releng_path, "r") as f:
-    releng = f.read()
-
-bm_match = re.search(r"bootmodes=\([\s\S]*?\)", releng)
-if bm_match:
-    bm = bm_match.group(0)
-    with open("profiledef.sh", "r") as f:
-        target = f.read()
-    new_target = re.sub(r"bootmodes=\([\s\S]*?\)", bm, target)
-    with open("profiledef.sh", "w") as f:
-        f.write(new_target)
-EOF
-              python3 patch_profile.py && \
-              chmod +x build.sh && \
-              ./build.sh
-            '
+            bash /workspace/run_build.sh
 
       - name: Disponibilizar a ISO para Download
         uses: actions/upload-artifact@v4
         with:
           name: ApertureScienceOS-ISO
           path: "**/out/*.iso"
-          if-no-files-found: error

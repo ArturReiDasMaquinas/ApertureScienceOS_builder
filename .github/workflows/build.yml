@@ -8,31 +8,35 @@ on:
 jobs:
   build-iso:
     runs-on: ubuntu-latest
-    container:
-      image: archlinux:latest
-      options: --privileged -v /dev:/dev
+
     steps:
       - name: Baixar código do repositório
         uses: actions/checkout@v4
 
-      - name: Atualizar chaves e instalar dependências do Arch
+      - name: Configurar dispositivos de Loop (necessário para o archiso)
         run: |
-          pacman -Sy --noconfirm archlinux-keyring
-          pacman -Syu --noconfirm
-          pacman -S --noconfirm archiso git rsync dos2unix
+          sudo modprobe loop
+          sudo mknod -m 0660 /dev/loop-control c 10 237 || true
+          for i in $(seq 0 7); do
+            sudo mknod -m 0660 /dev/loop$i b 7 $i || true
+          done
 
-      - name: Corrigir formato de arquivos do Windows e permissões
+      - name: Executar Build dentro do Container Arch Linux
         run: |
-          find . -type f \( -name "*.sh" -o -name "packages.x86_64" -o -name "profiledef.sh" -o -name "pacman.conf" \) -exec dos2unix {} +
-          chmod +x build.sh || true
-
-      - name: Compilar a ISO
-        run: |
-          if [ -d "ApertureScienceOS_builder" ]; then
-            cd ApertureScienceOS_builder
-          fi
-          chmod +x build.sh
-          ./build.sh
+          docker run --privileged \
+            -v /dev:/dev \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            archlinux:latest \
+            bash -c "
+              pacman -Sy --noconfirm archlinux-keyring && \
+              pacman -Syu --noconfirm && \
+              pacman -S --noconfirm archiso git rsync dos2unix && \
+              find . -type f \( -name '*.sh' -o -name 'packages.x86_64' -o -name 'profiledef.sh' -o -name 'pacman.conf' \) -exec dos2unix {} + && \
+              if [ -d 'ApertureScienceOS_builder' ]; then cd ApertureScienceOS_builder; fi && \
+              chmod +x build.sh && \
+              ./build.sh
+            "
 
       - name: Disponibilizar a ISO para Download
         uses: actions/upload-artifact@v4

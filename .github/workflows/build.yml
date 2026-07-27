@@ -27,7 +27,7 @@ jobs:
           #!/bin/bash
           set -e
 
-          echo "=== 1. Atualizando Chaves e Pacotes Base ==="
+          echo "=== 1. Atualizando Chaves e Pacotes ==="
           pacman-key --init
           pacman-key --populate archlinux
           pacman -Sy --noconfirm archlinux-keyring
@@ -47,13 +47,13 @@ jobs:
 
           find . -type f \( -name "*.sh" -o -name "packages.x86_64" -o -name "profiledef.sh" -o -name "pacman.conf" \) -exec dos2unix {} + 2>/dev/null || true
 
-          echo "=== 3. Injetando Pacotes Necessarios e archinstall ==="
+          echo "=== 3. Injetando Pacotes e archinstall ==="
           PKGS="base linux linux-firmware base-devel sudo git curl wget nano micro bash-completion networkmanager syslinux archinstall fastfetch"
           for pkg in $PKGS; do
             grep -q "^${pkg}$" packages.x86_64 || echo "$pkg" >> packages.x86_64
           done
 
-          echo "=== 4. Criando Instalador Tematico ApertureScienceOS ==="
+          echo "=== 4. Criando Instalador Temático Aperture ==="
           mkdir -p airootfs/usr/local/bin/
           cat << 'INSTALLER' > airootfs/usr/local/bin/aperture-install
 #!/bin/bash
@@ -65,18 +65,12 @@ echo " |          APERTURE SCIENCE COMPUTER OS              |"
 echo " |           Automated Installation Utility           |"
 echo " \\____________________________________________________/"
 echo -e "\033[0m"
-echo -e "\033[1;36m[GLaDOS]: Welcome to the ApertureScienceOS installation utility.\033[0m"
+echo -e "\033[1;36m[GLaDOS]: Welcome to the Aperture Science Computer OS installation.\033[0m"
 echo -e "\033[1;30m[GLaDOS]: Testing subject detected. Initializing archinstall...\033[0m\n"
 
 archinstall
 INSTALLER
           chmod +x airootfs/usr/local/bin/aperture-install
-
-          # Alias automatico para 'install' e 'instalar' chamarem o script da Aperture
-          mkdir -p airootfs/etc/profile.d/
-          echo "alias instalar='/usr/local/bin/aperture-install'" >> airootfs/etc/profile.d/aperture_aliases.sh
-          echo "alias install='/usr/local/bin/aperture-install'" >> airootfs/etc/profile.d/aperture_aliases.sh
-          chmod +x airootfs/etc/profile.d/aperture_aliases.sh
 
           # Copiar pastas de boot do releng caso faltem
           for dir in syslinux efiboot grub systemd-boot; do

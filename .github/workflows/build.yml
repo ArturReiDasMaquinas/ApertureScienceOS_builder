@@ -31,7 +31,7 @@ jobs:
             bash -c "
               pacman -Sy --noconfirm archlinux-keyring && \
               pacman -Syu --noconfirm && \
-              pacman -S --noconfirm archiso git rsync dos2unix && \
+              pacman -S --noconfirm archiso git rsync dos2unix grub syslinux mtools dosfstools squashfs-tools libisoburn edk2-ovmf erofs-utils && \
               find . -type f \( -name '*.sh' -o -name 'packages.x86_64' -o -name 'profiledef.sh' -o -name 'pacman.conf' \) -exec dos2unix {} + && \
               if [ -d 'ApertureScienceOS_builder' ]; then cd ApertureScienceOS_builder; fi && \
               chmod +x build.sh && \

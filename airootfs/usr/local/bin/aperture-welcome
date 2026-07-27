@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+ORANGE='\033[38;2;255;153;0m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+echo -e "${ORANGE}${BOLD}"
+echo "       .---.        APERTURE SCIENCE OS"
+echo "     /   |   \      Aperture Laboratories Test Initiative"
+echo "    |  --+--  |     System Status: ONLINE"
+echo "     \   |   /      Theme: #ff9900 (Aperture Orange)"
+echo "       '---'"
+echo -e "${NC}"

@@ -1,0 +1,10 @@
+
+\033[38;2;255;153;0m
+===================================================================
+       APERTURE SCIENCE COMPUTER OPERATING SYSTEM (v1.0)
+   "We do what we must because we can. For the good of all of us."
+===================================================================
+  * Primary Boot Logo Active: ApertureLogo01
+  * Terminal Color Scheme: Aperture Orange (#ff9900)
+  * Wallpapers: /usr/share/backgrounds/aperture/
+===================================================================\033[0m

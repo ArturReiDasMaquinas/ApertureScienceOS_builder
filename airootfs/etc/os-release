@@ -1,0 +1,8 @@
+NAME="ApertureScienceOS"
+PRETTY_NAME="Aperture Science OS v1.0 (Testing Initiative)"
+ID=aperturescienceos
+ID_LIKE=arch
+BUILD_ID=rolling
+ANSI_COLOR="38;2;255;153;0"
+HOME_URL="https://aperturescience.com/"
+LOGO=ApertureLogo01

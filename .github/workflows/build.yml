@@ -31,9 +31,13 @@ jobs:
             bash -c "
               pacman -Sy --noconfirm archlinux-keyring && \
               pacman -Syu --noconfirm && \
-              pacman -S --noconfirm archiso git rsync dos2unix grub syslinux mtools dosfstools squashfs-tools libisoburn edk2-ovmf erofs-utils && \
+              pacman -S --noconfirm archiso git rsync dos2unix syslinux mtools dosfstools squashfs-tools libisoburn edk2-ovmf erofs-utils && \
               find . -type f \( -name '*.sh' -o -name 'packages.x86_64' -o -name 'profiledef.sh' -o -name 'pacman.conf' \) -exec dos2unix {} + && \
               if [ -d 'ApertureScienceOS_builder' ]; then cd ApertureScienceOS_builder; fi && \
+              grep -q '^syslinux$' packages.x86_64 || echo 'syslinux' >> packages.x86_64 && \
+              if [ ! -d 'syslinux' ]; then cp -r /usr/share/archiso/configs/releng/syslinux . ; fi && \
+              if [ ! -d 'efiboot' ]; then cp -r /usr/share/archiso/configs/releng/efiboot . ; fi && \
+              sed -i '/bootmodes=(/,/)/c\bootmodes=(\x27bios.syslinux.mbr\x27 \x27bios.syslinux.eltorito\x27 \x27uefi-x86_64.systemd-boot.esp\x27 \x27uefi-x86_64.systemd-boot.eltorito\x27)' profiledef.sh && \
               chmod +x build.sh && \
               ./build.sh
             "

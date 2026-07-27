@@ -34,6 +34,7 @@ jobs:
               pacman -S --noconfirm archiso git rsync dos2unix syslinux mtools dosfstools squashfs-tools libisoburn edk2-ovmf erofs-utils grub python && \
               find . -type f \( -name "*.sh" -o -name "packages.x86_64" -o -name "profiledef.sh" -o -name "pacman.conf" \) -exec dos2unix {} + && \
               if [ -d "ApertureScienceOS_builder" ]; then cd ApertureScienceOS_builder; fi && \
+              mkdir -p out && \
               grep -q "^syslinux$" packages.x86_64 || echo "syslinux" >> packages.x86_64 && \
               for dir in syslinux efiboot grub systemd-boot; do
                 if [ -d "/usr/share/archiso/configs/releng/$dir" ] && [ ! -d "$dir" ]; then
@@ -66,3 +67,4 @@ EOF
         with:
           name: ApertureScienceOS-ISO
           path: "**/out/*.iso"
+          if-no-files-found: error

@@ -21,7 +21,7 @@ jobs:
             sudo mknod -m 0660 /dev/loop$i b 7 $i || true
           done
 
-      - name: Criar script de compilação
+      - name: Criar script de compilação com Calamares + Interface
         run: |
           cat << 'EOF' > run_build.sh
           #!/bin/bash
@@ -38,29 +38,60 @@ jobs:
           fi
 
           mkdir -p out
-          grep -q "^syslinux$" packages.x86_64 || echo "syslinux" >> packages.x86_64
 
+          # Add Chaotic-AUR repository for Calamares package
+          if ! grep -q "chaotic-aur" pacman.conf; then
+            cat << 'CHAOTIC' >> pacman.conf
+
+[chaotic-aur]
+SigLevel = Optional TrustAll
+Server = https://cdn-mirror.chaotic.cx/chaotic-aur/x86_64/$repo.db
+CHAOTIC
+          fi
+
+          # Add essential packages for GUI + Calamares
+          REQUIRED_PKGS="xorg-server xfce4 xfce4-terminal lightdm lightdm-gtk-greeter calamares networkmanager syslinux firefox"
+          for pkg in $REQUIRED_PKGS; do
+            grep -q "^${pkg}$" packages.x86_64 || echo "$pkg" >> packages.x86_64
+          done
+
+          # Create desktop shortcut for Calamares inside Live ISO
+          mkdir -p airootfs/etc/skel/Desktop
+          cat << 'DESK' > airootfs/etc/skel/Desktop/install-system.desktop
+[Desktop Entry]
+Type=Application
+Name=Instalar Aperture Science OS
+Comment=Iniciar o instalador grafico Calamares
+Exec=sudo -E calamares
+Icon=system-software-install
+Terminal=false
+Categories=System;
+DESK
+          chmod +x airootfs/etc/skel/Desktop/install-system.desktop
+
+          # Copy boot configs from releng profile
           for dir in syslinux efiboot grub systemd-boot; do
             if [ -d "/usr/share/archiso/configs/releng/$dir" ] && [ ! -d "$dir" ]; then
               cp -r "/usr/share/archiso/configs/releng/$dir" .
             fi
           done
 
+          # Patch profiledef.sh bootmodes
           cat << 'PYEOF' > patch_profile.py
-          import re
-          releng_path = "/usr/share/archiso/configs/releng/profiledef.sh"
-          with open(releng_path, "r") as f:
-              releng = f.read()
+import re
+releng_path = "/usr/share/archiso/configs/releng/profiledef.sh"
+with open(releng_path, "r") as f:
+    releng = f.read()
 
-          bm_match = re.search(r"bootmodes=\([\s\S]*?\)", releng)
-          if bm_match:
-              bm = bm_match.group(0)
-              with open("profiledef.sh", "r") as f:
-                  target = f.read()
-              new_target = re.sub(r"bootmodes=\([\s\S]*?\)", bm, target)
-              with open("profiledef.sh", "w") as f:
-                  f.write(new_target)
-          PYEOF
+bm_match = re.search(r"bootmodes=\([\s\S]*?\)", releng)
+if bm_match:
+    bm = bm_match.group(0)
+    with open("profiledef.sh", "r") as f:
+        target = f.read()
+    new_target = re.sub(r"bootmodes=\([\s\S]*?\)", bm, target)
+    with open("profiledef.sh", "w") as f:
+        f.write(new_target)
+PYEOF
 
           python3 patch_profile.py
           chmod +x build.sh
@@ -80,5 +111,5 @@ jobs:
       - name: Disponibilizar a ISO para Download
         uses: actions/upload-artifact@v4
         with:
-          name: ApertureScienceOS-ISO
+          name: ApertureScienceOS-Calamares-ISO
           path: "**/out/*.iso"

@@ -32,7 +32,7 @@ jobs:
           pacman-key --populate archlinux
           pacman -Sy --noconfirm archlinux-keyring
           pacman -Syu --noconfirm
-          pacman -S --noconfirm archiso git rsync dos2unix syslinux mtools dosfstools squashfs-tools libisoburn edk2-ovmf erofs-utils grub python
+          pacman -S --noconfirm archiso mkinitcpio git rsync dos2unix syslinux mtools dosfstools squashfs-tools libisoburn edk2-ovmf erofs-utils grub python
 
           echo "=== 2. Entrando na pasta do projeto ==="
           if [ -d "ApertureScienceOS_builder" ]; then
@@ -92,7 +92,7 @@ jobs:
           
           python3 patch_profile.py
 
-          echo "=== 7. Gerando a ISO Final ==="
+          echo "=== 7. Gerando a ISO Final com suporte limpo ao mkinitcpio ==="
           if [ -f "build.sh" ]; then
             chmod +x build.sh
             ./build.sh

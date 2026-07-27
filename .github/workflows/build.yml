@@ -30,25 +30,12 @@ jobs:
           pacman-key --init
           pacman-key --populate archlinux
 
-          echo "=== 2. Atualizando Pacotes Base ==="
+          echo "=== 2. Atualizando e Instalando Ferramentas Base ==="
           pacman -Sy --noconfirm archlinux-keyring
           pacman -Syu --noconfirm
           pacman -S --noconfirm archiso git rsync dos2unix syslinux mtools dosfstools squashfs-tools libisoburn edk2-ovmf erofs-utils grub python wget
 
-          echo "=== 3. Adicionando Repositório Chaotic-AUR ==="
-          pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com || true
-          pacman-key --lsign-key 3056513887B78AEB || true
-          pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' || true
-          pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' || true
-
-          if ! grep -q "chaotic-aur" /etc/pacman.conf; then
-            echo "" >> /etc/pacman.conf
-            echo "[chaotic-aur]" >> /etc/pacman.conf
-            echo "Include = /etc/pacman.d/chaotic-mirrorlist" >> /etc/pacman.conf
-          fi
-          pacman -Sy --noconfirm
-
-          echo "=== 4. Preparando Estrutura do Projeto ==="
+          echo "=== 3. Preparando Estrutura do Projeto ==="
           if [ -d "ApertureScienceOS_builder" ]; then
             cd ApertureScienceOS_builder
           fi
@@ -59,12 +46,18 @@ jobs:
             cp -r /usr/share/archiso/configs/releng/* .
           fi
 
+          if [ ! -f "pacman.conf" ]; then
+            cp /usr/share/archiso/configs/releng/pacman.conf .
+          fi
+
           find . -type f \( -name "*.sh" -o -name "packages.x86_64" -o -name "profiledef.sh" -o -name "pacman.conf" \) -exec dos2unix {} + 2>/dev/null || true
 
-          if [ -f "pacman.conf" ] && ! grep -q "chaotic-aur" pacman.conf; then
+          echo "=== 4. Injetando Repositório Chaotic-AUR no pacman.conf do Perfil ==="
+          if ! grep -q "chaotic-aur" pacman.conf; then
             echo "" >> pacman.conf
             echo "[chaotic-aur]" >> pacman.conf
-            echo "Include = /etc/pacman.d/chaotic-mirrorlist" >> pacman.conf
+            echo "SigLevel = Optional TrustAll" >> pacman.conf
+            echo "Server = https://cdn-mirror.chaotic.cx/chaotic-aur/x86_64/\$repo.db" >> pacman.conf
           fi
 
           echo "=== 5. Injetando Pacotes da Interface XFCE + Calamares ==="

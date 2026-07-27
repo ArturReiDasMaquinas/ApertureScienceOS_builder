@@ -21,41 +21,63 @@ jobs:
             sudo mknod -m 0660 /dev/loop$i b 7 $i || true
           done
 
-      - name: Criar script de compilação com Calamares + Interface
+      - name: Criar e Executar Script de Compilação
         run: |
           cat << 'EOF' > run_build.sh
           #!/bin/bash
           set -e
 
+          # 1. Atualizar chaves e pacotes base do Arch
           pacman -Sy --noconfirm archlinux-keyring
           pacman -Syu --noconfirm
-          pacman -S --noconfirm archiso git rsync dos2unix syslinux mtools dosfstools squashfs-tools libisoburn edk2-ovmf erofs-utils grub python
+          pacman -S --noconfirm archiso git rsync dos2unix syslinux mtools dosfstools squashfs-tools libisoburn edk2-ovmf erofs-utils grub python wget
 
-          find . -type f \( -name "*.sh" -o -name "packages.x86_64" -o -name "profiledef.sh" -o -name "pacman.conf" \) -exec dos2unix {} +
+          # 2. Importar chaves e instalar chaveiro do Chaotic-AUR
+          pacman-key --init || true
+          pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com || true
+          pacman-key --lsign-key 3056513887B78AEB || true
+          pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' || true
+          pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' || true
 
+          if ! grep -q "chaotic-aur" /etc/pacman.conf; then
+            cat << 'CHAOTIC' >> /etc/pacman.conf
+
+[chaotic-aur]
+Include = /etc/pacman.d/chaotic-mirrorlist
+CHAOTIC
+          fi
+          pacman -Sy --noconfirm
+
+          # 3. Entrar na pasta do projeto se existir
           if [ -d "ApertureScienceOS_builder" ]; then
             cd ApertureScienceOS_builder
           fi
 
           mkdir -p out
 
-          # Add Chaotic-AUR repository for Calamares package
-          if ! grep -q "chaotic-aur" pacman.conf; then
+          # 4. Copiar estrutura base do releng se faltar algum arquivo essencial
+          if [ ! -f "packages.x86_64" ]; then
+            cp -r /usr/share/archiso/configs/releng/* .
+          fi
+
+          find . -type f \( -name "*.sh" -o -name "packages.x86_64" -o -name "profiledef.sh" -o -name "pacman.conf" \) -exec dos2unix {} + 2>/dev/null || true
+
+          # Injetar Chaotic-AUR no pacman.conf do profile da ISO
+          if [ -f "pacman.conf" ] && ! grep -q "chaotic-aur" pacman.conf; then
             cat << 'CHAOTIC' >> pacman.conf
 
 [chaotic-aur]
-SigLevel = Optional TrustAll
-Server = https://cdn-mirror.chaotic.cx/chaotic-aur/x86_64/$repo.db
+Include = /etc/pacman.d/chaotic-mirrorlist
 CHAOTIC
           fi
 
-          # Add essential packages for GUI + Calamares
-          REQUIRED_PKGS="xorg-server xfce4 xfce4-terminal lightdm lightdm-gtk-greeter calamares networkmanager syslinux firefox"
-          for pkg in $REQUIRED_PKGS; do
+          # 5. Adicionar pacotes da Interface + Calamares
+          PKGS="xorg-server xfce4 xfce4-terminal lightdm lightdm-gtk-greeter calamares networkmanager syslinux firefox"
+          for pkg in $PKGS; do
             grep -q "^${pkg}$" packages.x86_64 || echo "$pkg" >> packages.x86_64
           done
 
-          # Create desktop shortcut for Calamares inside Live ISO
+          # 6. Criar atalho na Área de Trabalho para o instalador
           mkdir -p airootfs/etc/skel/Desktop
           cat << 'DESK' > airootfs/etc/skel/Desktop/install-system.desktop
 [Desktop Entry]
@@ -69,14 +91,14 @@ Categories=System;
 DESK
           chmod +x airootfs/etc/skel/Desktop/install-system.desktop
 
-          # Copy boot configs from releng profile
+          # Copiar pastas de boot do releng
           for dir in syslinux efiboot grub systemd-boot; do
             if [ -d "/usr/share/archiso/configs/releng/$dir" ] && [ ! -d "$dir" ]; then
               cp -r "/usr/share/archiso/configs/releng/$dir" .
             fi
           done
 
-          # Patch profiledef.sh bootmodes
+          # 7. Ajustar bootmodes via Python
           cat << 'PYEOF' > patch_profile.py
 import re
 releng_path = "/usr/share/archiso/configs/releng/profiledef.sh"
@@ -94,9 +116,16 @@ if bm_match:
 PYEOF
 
           python3 patch_profile.py
-          chmod +x build.sh
-          ./build.sh
+
+          # 8. Executar o build
+          if [ -f "build.sh" ]; then
+            chmod +x build.sh
+            ./build.sh
+          else
+            mkarchiso -v -w work -o out .
+          fi
           EOF
+
           chmod +x run_build.sh
 
       - name: Executar Build dentro do Container Arch Linux

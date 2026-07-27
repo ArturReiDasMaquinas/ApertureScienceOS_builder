@@ -57,7 +57,7 @@ jobs:
             echo "" >> pacman.conf
             echo "[chaotic-aur]" >> pacman.conf
             echo "SigLevel = Optional TrustAll" >> pacman.conf
-            echo "Server = https://cdn-mirror.chaotic.cx/chaotic-aur/x86_64/\$repo.db" >> pacman.conf
+            echo "Server = https://cdn-mirror.chaotic.cx/chaotic-aur/x86_64" >> pacman.conf
           fi
 
           echo "=== 5. Injetando Pacotes da Interface XFCE + Calamares ==="

@@ -35,7 +35,21 @@ jobs:
           pacman -Syu --noconfirm
           pacman -S --noconfirm archiso git rsync dos2unix syslinux mtools dosfstools squashfs-tools libisoburn edk2-ovmf erofs-utils grub python wget
 
-          echo "=== 3. Preparando Estrutura do Projeto ==="
+          echo "=== 3. Instalando Chaves do Chaotic-AUR ==="
+          pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com || true
+          pacman-key --lsign-key 3056513887B78AEB || true
+          pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' || true
+          pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' || true
+
+          if ! grep -q "chaotic-aur" /etc/pacman.conf; then
+            echo "" >> /etc/pacman.conf
+            echo "[chaotic-aur]" >> /etc/pacman.conf
+            echo "SigLevel = Optional TrustAll" >> /etc/pacman.conf
+            echo "Server = https://cdn-mirror.chaotic.cx/chaotic-aur/x86_64" >> /etc/pacman.conf
+          fi
+          pacman -Sy --noconfirm
+
+          echo "=== 4. Preparando Estrutura do Projeto ==="
           if [ -d "ApertureScienceOS_builder" ]; then
             cd ApertureScienceOS_builder
           fi
@@ -52,7 +66,7 @@ jobs:
 
           find . -type f \( -name "*.sh" -o -name "packages.x86_64" -o -name "profiledef.sh" -o -name "pacman.conf" \) -exec dos2unix {} + 2>/dev/null || true
 
-          echo "=== 4. Injetando Repositório Chaotic-AUR no pacman.conf do Perfil ==="
+          echo "=== 5. Injetando Repositório Chaotic-AUR no pacman.conf da ISO ==="
           if ! grep -q "chaotic-aur" pacman.conf; then
             echo "" >> pacman.conf
             echo "[chaotic-aur]" >> pacman.conf
@@ -60,13 +74,13 @@ jobs:
             echo "Server = https://cdn-mirror.chaotic.cx/chaotic-aur/x86_64" >> pacman.conf
           fi
 
-          echo "=== 5. Injetando Pacotes da Interface XFCE + Calamares ==="
+          echo "=== 6. Injetando Pacotes da Interface XFCE + Calamares ==="
           PKGS="xorg-server xfce4 xfce4-terminal lightdm lightdm-gtk-greeter calamares networkmanager syslinux firefox"
           for pkg in $PKGS; do
             grep -q "^${pkg}$" packages.x86_64 || echo "$pkg" >> packages.x86_64
           done
 
-          echo "=== 6. Criando Atalho do Calamares no Live Desktop ==="
+          echo "=== 7. Criando Atalho do Calamares no Live Desktop ==="
           mkdir -p airootfs/etc/skel/Desktop
           echo "[Desktop Entry]" > airootfs/etc/skel/Desktop/install-system.desktop
           echo "Type=Application" >> airootfs/etc/skel/Desktop/install-system.desktop
@@ -84,7 +98,7 @@ jobs:
             fi
           done
 
-          echo "=== 7. Sincronizando Bootmodes ==="
+          echo "=== 8. Sincronizando Bootmodes ==="
           echo "import re" > patch_profile.py
           echo "releng_path = '/usr/share/archiso/configs/releng/profiledef.sh'" >> patch_profile.py
           echo "with open(releng_path, 'r') as f:" >> patch_profile.py
@@ -100,7 +114,7 @@ jobs:
           
           python3 patch_profile.py
 
-          echo "=== 8. Gerando a ISO Final ==="
+          echo "=== 9. Gerando a ISO Final ==="
           if [ -f "build.sh" ]; then
             chmod +x build.sh
             ./build.sh

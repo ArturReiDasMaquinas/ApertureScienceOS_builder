@@ -9,7 +9,7 @@ System designed for test subjects and Aperture Science Laboratories personnel.
 - **OS Name:** ApertureScienceOS
 - **Primary Color:** Aperture Orange (`#ff9900`)
 - **Active Boot Logo:** `ApertureLogo01.png`
-- **Deprecated Logo:** `ApertureLogoOld.png` (Disabled/Archived)
+- **Old Logo:** `ApertureLogoOld.png` (Disabled/Archived)
 - **Wallpapers Included:**
   - `/usr/share/backgrounds/aperture/ApertureWallpaper01.png`
   - `/usr/share/backgrounds/aperture/ApertureWallpaperOld.png`

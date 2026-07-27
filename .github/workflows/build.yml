@@ -10,18 +10,27 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: archlinux:latest
-      options: --privileged
+      options: --privileged -v /dev:/dev
     steps:
       - name: Baixar código do repositório
         uses: actions/checkout@v4
 
-      - name: Atualizar sistema e instalar archiso
+      - name: Atualizar chaves e instalar dependências do Arch
         run: |
+          pacman -Sy --noconfirm archlinux-keyring
           pacman -Syu --noconfirm
-          pacman -S --noconfirm archiso git rsync
+          pacman -S --noconfirm archiso git rsync dos2unix
+
+      - name: Corrigir formato de arquivos do Windows e permissões
+        run: |
+          find . -type f \( -name "*.sh" -o -name "packages.x86_64" -o -name "profiledef.sh" -o -name "pacman.conf" \) -exec dos2unix {} +
+          chmod +x build.sh || true
 
       - name: Compilar a ISO
         run: |
+          if [ -d "ApertureScienceOS_builder" ]; then
+            cd ApertureScienceOS_builder
+          fi
           chmod +x build.sh
           ./build.sh
 
@@ -29,4 +38,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ApertureScienceOS-ISO
-          path: out/*.iso
+          path: "**/out/*.iso"

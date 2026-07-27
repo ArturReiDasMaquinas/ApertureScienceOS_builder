@@ -13,7 +13,7 @@ jobs:
       - name: Baixar código do repositório
         uses: actions/checkout@v4
 
-      - name: Configurar dispositivos de Loop (necessário para o archiso)
+      - name: Configurar dispositivos de Loop
         run: |
           sudo modprobe loop
           sudo mknod -m 0660 /dev/loop-control c 10 237 || true
@@ -25,15 +25,17 @@ jobs:
         run: |
           cat << 'EOF' > run_build.sh
           #!/bin/bash
-          set -e
 
-          # 1. Atualizar chaves e pacotes base do Arch
+          echo "=== 1. Configurando Chaves do Pacman ==="
+          pacman-key --init
+          pacman-key --populate archlinux
+
+          echo "=== 2. Atualizando Pacotes Base ==="
           pacman -Sy --noconfirm archlinux-keyring
           pacman -Syu --noconfirm
           pacman -S --noconfirm archiso git rsync dos2unix syslinux mtools dosfstools squashfs-tools libisoburn edk2-ovmf erofs-utils grub python wget
 
-          # 2. Importar chaves e instalar chaveiro do Chaotic-AUR
-          pacman-key --init || true
+          echo "=== 3. Adicionando Repositório Chaotic-AUR ==="
           pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com || true
           pacman-key --lsign-key 3056513887B78AEB || true
           pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' || true
@@ -48,21 +50,19 @@ CHAOTIC
           fi
           pacman -Sy --noconfirm
 
-          # 3. Entrar na pasta do projeto se existir
+          echo "=== 4. Preparando Estrutura do Projeto ==="
           if [ -d "ApertureScienceOS_builder" ]; then
             cd ApertureScienceOS_builder
           fi
 
           mkdir -p out
 
-          # 4. Copiar estrutura base do releng se faltar algum arquivo essencial
           if [ ! -f "packages.x86_64" ]; then
             cp -r /usr/share/archiso/configs/releng/* .
           fi
 
           find . -type f \( -name "*.sh" -o -name "packages.x86_64" -o -name "profiledef.sh" -o -name "pacman.conf" \) -exec dos2unix {} + 2>/dev/null || true
 
-          # Injetar Chaotic-AUR no pacman.conf do profile da ISO
           if [ -f "pacman.conf" ] && ! grep -q "chaotic-aur" pacman.conf; then
             cat << 'CHAOTIC' >> pacman.conf
 
@@ -71,13 +71,13 @@ Include = /etc/pacman.d/chaotic-mirrorlist
 CHAOTIC
           fi
 
-          # 5. Adicionar pacotes da Interface + Calamares
+          echo "=== 5. Injetando Pacotes da Interface XFCE + Calamares ==="
           PKGS="xorg-server xfce4 xfce4-terminal lightdm lightdm-gtk-greeter calamares networkmanager syslinux firefox"
           for pkg in $PKGS; do
             grep -q "^${pkg}$" packages.x86_64 || echo "$pkg" >> packages.x86_64
           done
 
-          # 6. Criar atalho na Área de Trabalho para o instalador
+          echo "=== 6. Criando Atalho do Calamares no Live Desktop ==="
           mkdir -p airootfs/etc/skel/Desktop
           cat << 'DESK' > airootfs/etc/skel/Desktop/install-system.desktop
 [Desktop Entry]
@@ -91,14 +91,13 @@ Categories=System;
 DESK
           chmod +x airootfs/etc/skel/Desktop/install-system.desktop
 
-          # Copiar pastas de boot do releng
           for dir in syslinux efiboot grub systemd-boot; do
             if [ -d "/usr/share/archiso/configs/releng/$dir" ] && [ ! -d "$dir" ]; then
               cp -r "/usr/share/archiso/configs/releng/$dir" .
             fi
           done
 
-          # 7. Ajustar bootmodes via Python
+          echo "=== 7. Sincronizando Bootmodes ==="
           cat << 'PYEOF' > patch_profile.py
 import re
 releng_path = "/usr/share/archiso/configs/releng/profiledef.sh"
@@ -117,7 +116,7 @@ PYEOF
 
           python3 patch_profile.py
 
-          # 8. Executar o build
+          echo "=== 8. Gerando a ISO Final ==="
           if [ -f "build.sh" ]; then
             chmod +x build.sh
             ./build.sh

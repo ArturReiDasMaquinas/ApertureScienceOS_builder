@@ -9,8 +9,8 @@
           <property name="backdrop-cycle-enable" type="bool" value="true"/>
           <property name="backdrop-cycle-time" type="int" value="15"/>
           <property name="image-list" type="array">
-            <value type="string" value="/usr/share/backgrounds/callie/ApertureWallpaper01.png"/>
-            <value type="string" value="/usr/share/backgrounds/callie/ApertureWallpaperOld.png"/>
+            <value type="string" value="/usr/share/backgrounds/aperture/ApertureWallpaper01.png"/>
+            <value type="string" value="/usr/share/backgrounds/aperture/ApertureWallpaperOld.png"/>
           </property>
         </property>
       </property>
